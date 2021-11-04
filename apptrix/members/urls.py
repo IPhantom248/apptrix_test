@@ -1,6 +1,13 @@
-from django.urls import path
-from members.views import home_view
+from django.urls import path, include
+from members.views import home_view, SignUpAPIView
+from rest_framework import routers
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+router = routers.DefaultRouter()
+
 
 urlpatterns = [
-    path('', home_view, name='home_page'),
+    path('', include(router.urls)),
+    path('api/clients/create', SignUpAPIView.as_view()),
+    path('api/clients/auth', TokenObtainPairView.as_view()),
 ]
