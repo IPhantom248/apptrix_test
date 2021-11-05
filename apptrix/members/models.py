@@ -1,21 +1,29 @@
-import jwt
+import os
 
-from datetime import datetime, timedelta
+from io import BytesIO
+from PIL import Image
 
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
+from django.core.files.base import ContentFile
 from django.db import models
 from django.contrib.auth.models import PermissionsMixin
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 from apptrix import settings
 
 
 class MemberManager(BaseUserManager):
+
     def create_user(self, email, password=None, **extra_fields):
         if email is None:
             raise TypeError('Поле email не должно быть пустым.')
 
         user = self.model(email=self.normalize_email(email), **extra_fields)
         user.set_password(password)
+        image_with_watermark = self.add_watermark(Image.open(user.photo), user.photo.name,
+                                                  os.path.join(settings.MEDIA_ROOT, 'watermark.png'))
+        user.photo = image_with_watermark
+        print(user.photo)
         user.save()
         return user
 
@@ -29,8 +37,22 @@ class MemberManager(BaseUserManager):
         user.is_superuser = True
         user.is_staff = True
         user.save()
-
         return user
+
+    @staticmethod
+    def add_watermark(image: InMemoryUploadedFile, image_name: str, watermark_path: str,
+                      wm_interval=0) -> InMemoryUploadedFile:
+        watermark = Image.open(watermark_path)
+        layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        for y in range(0, image.size[1], watermark.size[1] + wm_interval):
+            for x in range(0, image.size[0], watermark.size[0] + wm_interval):
+                layer.paste(watermark, (x, y))
+        buffer = BytesIO()
+        Image.composite(layer, image, layer).save(fp=buffer, format='PNG')
+        buff_val = buffer.getvalue()
+        new_img = ContentFile(buff_val)
+        image_file = InMemoryUploadedFile(new_img, None, f'{image_name}', 'image/jpeg', new_img.tell, None)
+        return image_file
 
 
 class Member(AbstractBaseUser, PermissionsMixin):
@@ -45,8 +67,7 @@ class Member(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(verbose_name='Имя', max_length=50)
     last_name = models.CharField(verbose_name='Фамилия', max_length=50)
     gender = models.CharField(verbose_name='Пол', choices=GENDER_CHOICES, max_length=7)
-    photo = models.ImageField(upload_to='profile_photo/%y/%m/%d/', verbose_name='Фото',
-                              default='profile_photo/default_profile_photo.png', blank=True)
+    photo = models.ImageField(upload_to='profile_photo/%y/%m/%d/', verbose_name='Фото')
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -63,4 +84,3 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name
-

@@ -1,6 +1,4 @@
-from django.contrib.auth.models import update_last_login
 from rest_framework import serializers
-from django.contrib.auth import get_user_model, authenticate
 
 from members.models import Member
 
@@ -14,3 +12,6 @@ class MemberSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Member.objects.create_user(**validated_data)
+
+
+
