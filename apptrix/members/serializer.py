@@ -4,14 +4,20 @@ from members.models import Member
 
 
 class MemberSerializer(serializers.ModelSerializer):
-    token = serializers.CharField(max_length=255, read_only=True)
 
     class Meta:
         model = Member
-        fields = ('email', 'password', 'first_name', 'last_name', 'gender', 'photo', 'token')
+        fields = ('email', 'password', 'first_name', 'last_name', 'gender', 'photo')
+        write_only_fields = ['password']
 
     def create(self, validated_data):
         return Member.objects.create_user(**validated_data)
+
+
+class MemberListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = ('first_name', 'last_name', 'gender', 'photo')
 
 
 
